@@ -2,10 +2,6 @@ image: node:6.5.0
 cache:
   paths:
   - node_modules/
-all_tests:
-  script:
-   - npm install
-   - npm test
 production:
   type: deploy
   script:
