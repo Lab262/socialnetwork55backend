@@ -1,0 +1,28 @@
+image: node:6.5.0
+cache:
+  paths:
+  - node_modules/
+all_tests:
+  script:
+   - npm install
+   - npm test
+production:
+  type: deploy
+  script:
+  - apt-get update -qy
+  - echo "Y" |apt-get install libssl-dev
+  - apt-get install -y rubygems
+  - gem install dpl
+  - dpl --provider=heroku --app=socialnetwork55lab --api-key=$HEROKU_PRODUCTION_API_KEY
+  only:
+  - master
+stagging:
+  type: deploy
+  script:
+  - apt-get update -qy
+  - echo "Y" |apt-get install libssl-dev
+  - apt-get install -y rubygems
+  - gem install dpl
+  - dpl --provider=heroku --app=socialnetwork55lab-stg --api-key=$HEROKU_PRODUCTION_API_KEY
+  only:
+  - dev
