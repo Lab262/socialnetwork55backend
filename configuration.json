@@ -1,0 +1,7 @@
+{
+  "appId": "myAppId",
+  "masterKey": "myMasterKey",
+  "appName": "55Lab",
+  "cloud": "./cloud/main",
+  "databaseURI": "mongodb://localhost/test"
+}
