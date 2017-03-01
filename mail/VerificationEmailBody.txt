@@ -1,0 +1,7 @@
+<html>
+
+Olá %username% ative aqui seu email sua senha aqui para accessar a %appname% <br><br>
+
+%link%
+
+</html>

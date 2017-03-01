@@ -12,7 +12,9 @@
     "express": "~4.11.x",
     "kerberos": "~0.0.x",
     "parse": "~1.8.0",
-    "parse-server": "*"
+    "parse-server": "*",
+    "parse-server-mail-template-adapter": "^1.0.2",
+    "parse-server-sendgrid-adapter": "^1.0.0"
   },
   "scripts": {
     "start": "node index.js"

@@ -4,6 +4,8 @@
 var express = require('express');
 var ParseServer = require('parse-server').ParseServer;
 var path = require('path');
+var SimpleSendGridAdapter = require('parse-server-sendgrid-adapter');
+var MailTemplateAdapter = require('parse-server-mail-template-adapter');
 
 var databaseUri = process.env.DATABASE_URI || process.env.MONGODB_URI;
 
@@ -17,9 +19,36 @@ var api = new ParseServer({
   appId: process.env.APP_ID || 'myAppId',
   masterKey: process.env.MASTER_KEY || 'myMasterKey', //Add your master key here. Keep it secret!
   serverURL: process.env.SERVER_URL || 'http://localhost:1337/parse',  // Don't forget to change to https if needed
-  liveQuery: {
-    classNames: ["Posts", "Comments"] // List of classes to support for query subscriptions
+  appName: "+55Lab.Community",
+  publicServerURL: "http://localhost:1337/parse",
+  emailAdapter: MailTemplateAdapter({
+
+    adapter: SimpleSendGridAdapter({
+      apiKey: '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',
+      fromAddress: 'thiago@lab262.com',
+    }),
+    template: {
+      verification: {
+        subject: "Seu acesso ao +55Lab.Community",
+        // Choose one in body and bodyFile, if both setted then body used
+        body: "verfication body",
+        bodyFile: "./mail/VerificationEmailBody.txt"
+      },
+      resetPassword: {  // Same as verification
+        subject: "reset password subject",
+        // body: "<br> <br> <br> reset password body",
+        bodyFile: "./mail/ResetPasswordEmail.txt"
+      }
+    }
+  }),
+
+  customPages: {
+    // invalidLink: 'http://localhost:1337/invalid_link.html',
+    // verifyEmailSuccess: 'http://localhost:1337/verify_email_success.html',
+    // choosePassword: 'http://localhost:1337/parse/choose_password.html',
+    passwordResetSuccess: 'http://55lab.co'
   }
+
 });
 // Client-keys like the javascript key or the .NET key are not necessary with parse-server
 // If you wish you require them, you can set them as options in the initialization above:
@@ -35,20 +64,20 @@ var mountPath = process.env.PARSE_MOUNT || '/parse';
 app.use(mountPath, api);
 
 // Parse Server plays nicely with the rest of your web routes
-app.get('/', function(req, res) {
+app.get('/', function (req, res) {
   res.status(200).send('I dream of being a website.  Please star the parse-server repo on GitHub!');
 });
 
 // There will be a test page available on the /test path of your server url
 // Remove this before launching your app
-app.get('/test', function(req, res) {
+app.get('/test', function (req, res) {
   res.sendFile(path.join(__dirname, '/public/test.html'));
 });
 
 var port = process.env.PORT || 1337;
 var httpServer = require('http').createServer(app);
-httpServer.listen(port, function() {
-    console.log('parse-server-example running on port ' + port + '.');
+httpServer.listen(port, function () {
+  console.log('parse-server-example running on port ' + port + '.');
 });
 
 // This will enable the Live Query real-time server
