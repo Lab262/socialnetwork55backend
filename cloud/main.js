@@ -25,3 +25,20 @@ function resetUserPassword(userInfo, res) {
     return res.error('User not found')
   });
 }
+
+
+Parse.Cloud.define('getVindiEntity', function (req, res) {
+
+  Parse.Cloud.httpRequest({
+    url: 'https://app.vindi.com.br:443/api/v1/' + req.params.entity,
+    headers: {
+      "Authorization": "Basic SWNHWjBxc3dPOExUMGh3M1U5SnpWNU5PcEdrWnQ2cWY6KioqKiogSGlkZGVuIGNyZWRlbnRpYWxzICoqKioq"
+    }
+  }).then(function(httpResponse) {
+    return res.success(httpResponse.data)
+
+  }, function(httpResponse) {
+    return res.error(httpResponse)
+    // console.error('Request failed with response code ' + httpResponse.status);
+  });
+});
