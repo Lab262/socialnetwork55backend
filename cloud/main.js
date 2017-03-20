@@ -27,10 +27,13 @@ function resetUserPassword(userInfo, res) {
 }
 
 
-Parse.Cloud.define('getVindiEntity', function (req, res) {
+Parse.Cloud.define('vindiManager', function (req, res) {
 
   Parse.Cloud.httpRequest({
-    url: 'https://app.vindi.com.br:443/api/v1/' + req.params.entity,
+    method: req.params.requestMethod,
+    url: 'https://app.vindi.com.br:443/api/v1/' + req.params.pathPlusParams,
+    body: req.params.requestBody,
+    params: req.params.requestParams,
     headers: {
       "Authorization": "Basic SWNHWjBxc3dPOExUMGh3M1U5SnpWNU5PcEdrWnQ2cWY6KioqKiogSGlkZGVuIGNyZWRlbnRpYWxzICoqKioq"
     }
