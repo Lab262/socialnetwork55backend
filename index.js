@@ -13,16 +13,7 @@ if (!databaseUri) {
   console.log('DATABASE_URI not specified, falling back to localhost.');
 }
 
-var api = new ParseServer({
-  databaseURI: databaseUri || 'mongodb://localhost:27017/dev',
-  cloud: process.env.CLOUD_CODE_MAIN || __dirname + '/cloud/main.js',
-  appId: process.env.APP_ID || 'myAppId',
-  masterKey: process.env.MASTER_KEY || 'myMasterKey', //Add your master key here. Keep it secret!
-  serverURL: process.env.SERVER_URL || 'http://localhost:1337/parse',  // Don't forget to change to https if needed
-  appName: "+55Lab.Community",
-  publicServerURL: "http://localhost:1337/parse",
-  emailAdapter: MailTemplateAdapter({
-
+var mailAdapter = MailTemplateAdapter({
     adapter: SimpleSendGridAdapter({
       apiKey: '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',
       fromAddress: 'thiago@lab262.com',
@@ -40,13 +31,32 @@ var api = new ParseServer({
         bodyFile: "./mail/ResetPasswordEmail.txt"
       }
     }
-  }),
+  })
 
+var api = new ParseServer({
+  databaseURI: databaseUri || 'mongodb://localhost:27017/dev',
+  cloud: process.env.CLOUD_CODE_MAIN || __dirname + '/cloud/main.js',
+  appId: process.env.APP_ID || 'myAppId',
+  masterKey: process.env.MASTER_KEY || 'myMasterKey', //Add your master key here. Keep it secret!
+  serverURL: process.env.SERVER_URL || 'http://localhost:1337/parse',  // Don't forget to change to https if needed
+  appName: "+55Lab.Community",
+  publicServerURL: "http://localhost:1337/parse",
+  emailAdapter: mailAdapter,
   customPages: {
     // invalidLink: 'http://localhost:1337/invalid_link.html',
     // verifyEmailSuccess: 'http://localhost:1337/verify_email_success.html',
     // choosePassword: 'http://localhost:1337/parse/choose_password.html',
     passwordResetSuccess: 'http://55lab.co'
+  },
+  push: {
+    ios:  [
+    {
+      pfx: './push-notifications/lab262.55lab.socialnetwork.dev.p12', // Dev PFX or P12
+      bundleId: 'lab262.55lab.socialnetwork.dev',
+      passphrase: 'lab26255lab$$$', // optional password to your p12
+      production: false // Dev
+    }
+  ]
   }
 
 });
