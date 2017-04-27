@@ -20,7 +20,7 @@ function getAdapterForEnvironment() {
                     pfx: './push-notifications/resources/lab262.55lab.socialnetwork.test.p12', // Dev PFX or P12
                     bundleId: 'lab262.55lab.socialnetwork.test',
                     passphrase: 'lab26255lab$$$', // optional password to your p12
-                    production: true // Dev
+                    production: true // Production
                 }
             ]
         }
