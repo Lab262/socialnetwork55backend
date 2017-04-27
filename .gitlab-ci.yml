@@ -21,7 +21,7 @@ test:
   - gem install dpl
   - dpl --provider=heroku --app=api-55lab-test --api-key=$HEROKU_PRODUCTION_API_KEY
   only:
-  - master
+  - test
 dev:
   type: deploy
   script:
