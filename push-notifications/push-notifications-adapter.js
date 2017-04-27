@@ -38,5 +38,5 @@ function getAdapterForEnvironment() {
         }
     }
 }
-
+console.log(getAdapterForEnvironment())
 module.exports = getAdapterForEnvironment()
