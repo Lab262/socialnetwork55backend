@@ -9,16 +9,26 @@ production:
   - echo "Y" |apt-get install libssl-dev
   - apt-get install -y rubygems
   - gem install dpl
-  - dpl --provider=heroku --app=socialnetwork55lab --api-key=$HEROKU_PRODUCTION_API_KEY
+  - dpl --provider=heroku --app=api-55lab-prd --api-key=$HEROKU_PRODUCTION_API_KEY
   only:
   - master
-stagging:
+test:
   type: deploy
   script:
   - apt-get update -qy
   - echo "Y" |apt-get install libssl-dev
   - apt-get install -y rubygems
   - gem install dpl
-  - dpl --provider=heroku --app=socialnetwork55lab-stg --api-key=$HEROKU_PRODUCTION_API_KEY
+  - dpl --provider=heroku --app=api-55lab-test --api-key=$HEROKU_PRODUCTION_API_KEY
+  only:
+  - master
+dev:
+  type: deploy
+  script:
+  - apt-get update -qy
+  - echo "Y" |apt-get install libssl-dev
+  - apt-get install -y rubygems
+  - gem install dpl
+  - dpl --provider=heroku --app=api-55lab-dev-stg --api-key=$HEROKU_PRODUCTION_API_KEY
   only:
   - dev
