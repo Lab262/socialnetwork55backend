@@ -29,6 +29,6 @@ dev:
   - echo "Y" |apt-get install libssl-dev
   - apt-get install -y rubygems
   - gem install dpl
-  - dpl --provider=heroku --app=api-55lab-dev-stg --api-key=$HEROKU_PRODUCTION_API_KEY
+  - dpl --provider=heroku --app=api-55lab-dev --api-key=$HEROKU_PRODUCTION_API_KEY
   only:
   - dev
