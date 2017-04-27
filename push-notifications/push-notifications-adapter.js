@@ -21,13 +21,7 @@ function getAdapterForEnvironment() {
                     bundleId: 'lab262.55lab.socialnetwork.test',
                     passphrase: 'lab26255lab$$$', // optional password to your p12
                     production: true // Production
-                },
-                {
-                    pfx: './push-notifications/resources/lab262.55lab.socialnetwork.test-dev.p12', // Dev PFX or P12
-                    bundleId: 'lab262.55lab.socialnetwork.test',
-                    passphrase: 'lab26255lab$$$', // optional password to your p12
-                    production: false // Production
-                },
+                }
             ]
         }
     } else {
