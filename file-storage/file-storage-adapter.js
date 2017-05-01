@@ -10,7 +10,7 @@ var bucketName = "";
  }
 
 
-var gcsAdapter = new GCSAdapter('999065181840', 
+var gcsAdapter = new GCSAdapter('493991025661', 
 								'./file-storage/resources/55lab Social Network-6a23cf29f2ca.json', 
 								bucketName , {
 									bucketPrefix: '',
