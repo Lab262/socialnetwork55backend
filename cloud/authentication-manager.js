@@ -96,47 +96,54 @@ Parse.Cloud.define('membershipLogin', function (req, res) {
 
 Parse.Cloud.define('membershipRegistration', function (req, res) {
 
+  findUserByEmailAndCpf(req.params.email, req.params.cpf, res)
+
+})
+
+function findUserByEmailAndCpf(email, cpf, res) {
   var userExistsQuery = new Parse.Query(Parse.User);
-  userExistsQuery.equalTo("username", req.params.email);
+  userExistsQuery.equalTo("username", email);
 
   var PersonObject = Parse.Object.extend("Person");
   var innerPersonQuery = new Parse.Query(PersonObject);
-  innerPersonQuery.equalTo("cpf", req.params.cpf);
+  innerPersonQuery.equalTo("cpf", cpf);
   userExistsQuery.matchesQuery("personPointer", innerPersonQuery);
 
   userExistsQuery.find().then(function (users) {
     if (users.length > 0) { //is already registered
       if (users[0].get('subscriptionStatus') != SubscriptionStatus.ACTIVE) {
-                res.success("vindi");
-        // verifyAndCreateVindiUser(users[0])
+        verifyAndCreateVindiUser(users[0], res);
       } else {
-        res.error({ msg: "User already with an active subscription " });
+        return res.error({ msg: "User already with an active subscription " });
       }
-    } else {
-      var User = Parse.Object.extend("User");
-      var newUser = new User();
-      var randomPassword = Math.random().toString(36);
-      newUser.set('username', req.params.email);
-      newUser.set('email', req.params.email);
-      newUser.set('subscriptionStatus', SubscriptionStatus.INACTIVE);
-      newUser.set('password', randomPassword);
-      var Person = Parse.Object.extend("Person");
-      var newPerson = new Person();
-      newPerson.set('cpf', req.params.cpf);
-      newUser.set('personPointer',newPerson);
-
-      newUser.save().then(function (createdUser) {
-                res.success("vindi criano");
-
-      }).catch(function (error) {
-        return res.error(error);
-      })
+    } else { //is not registered
+      createNewUserPersonWithEmailCpf(email, cpf, res);
     }
   }).catch(function (error) {
     return res.error(error);
   })
-})
+}
 
-function verifyAndCreateVindiUser(user) {
+function createNewUserPersonWithEmailCpf(email, cpf, res) {
+  var User = Parse.Object.extend("User");
+  var newUser = new User();
+  var randomPassword = Math.random().toString(36);
+  newUser.set('username', email);
+  newUser.set('email', email);
+  newUser.set('subscriptionStatus', SubscriptionStatus.INACTIVE);
+  newUser.set('password', randomPassword);
+  var Person = Parse.Object.extend("Person");
+  var newPerson = new Person();
+  newPerson.set('cpf', cpf);
+  newUser.set('personPointer', newPerson);
 
+  newUser.save().then(function (createdUser) {
+    verifyAndCreateVindiUser(createdUser, res)
+  }).catch(function (error) {
+    return res.error(error);
+  })
+}
+
+function verifyAndCreateVindiUser(user,res ) {
+  res.success('vidi')
 }
