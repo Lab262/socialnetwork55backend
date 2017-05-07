@@ -1,3 +1,11 @@
+const SubscriptionStatus = {
+  ACTIVE: 0,
+  CANCELED: 1,
+  DEFAULTING: 2,
+  INACTIVE: 3,
+  PENDINGVISIT: 4
+}
+
 Parse.Cloud.define('sendUserAccessMail', function (req, res) {
 
   var users = req.params.users
@@ -26,12 +34,11 @@ function resetUserPassword(userInfo, res) {
   });
 }
 
-Parse.Cloud.define('membershipLogin', function(req,res) {
-  // var query = new Parse.Query(Parse.User);
-  // query.equalTo("email", req.params.em);
+Parse.Cloud.define('membershipLogin', function (req, res) {
 
   var loginInfo = {}
   Parse.User.logIn(req.paras.email, req.params.password).then(function (user) {
+
     loginInfo = user
     return Parse.Cloud.httpRequest({
       method: 'GET',
@@ -64,16 +71,16 @@ Parse.Cloud.define('membershipLogin', function(req,res) {
   }).then(function (httpResponse) {
 
     if (httpResponse.length > 0) {
-        var subscription = httpResponse[0]
+      var subscription = httpResponse[0]
 
-        if (subscription.status == "active") {
-          return res.success(loginInfo)
-        } else {
-          return res.error({
-            code: 401,
-            error: 'User membership subscription inactive'
-          })
-        }
+      if (subscription.status == "active") {
+        return res.success(loginInfo)
+      } else {
+        return res.error({
+          code: 401,
+          error: 'User membership subscription inactive'
+        })
+      }
     } else {
       return res.error({
         code: 401,
@@ -85,3 +92,49 @@ Parse.Cloud.define('membershipLogin', function(req,res) {
   });
 
 })
+
+
+Parse.Cloud.define('membershipRegistration', function (req, res) {
+
+  var userExistsQuery = new Parse.Query(Parse.User);
+  userExistsQuery.equalTo("username", req.params.email);
+
+  var PersonObject = Parse.Object.extend("Person");
+  var innerPersonQuery = new Parse.Query(PersonObject);
+  innerPersonQuery.equalTo("cpf", req.params.cpf);
+  userExistsQuery.matchesQuery("personPointer", innerPersonQuery);
+
+  userExistsQuery.find().then(function (users) {
+    if (users.length > 0) { //is already registered
+      if (users[0].subscriptionStatus != SubscriptionStatus.ACTIVE) {
+        res.error({ msg: "User already with an active subscription " });
+      } else {
+        verifyAndCreateVindiUser(users[0])
+      }
+    } else {
+      var User = Parse.Object.extend("User");
+      var newUser = new User();
+      var randomPassword = Math.random().toString(36);
+      newUser.set('username', req.params.email);
+      newUser.set('email', req.params.email);
+      newUser.set('subscriptionStatus', SubscriptionStatus.INACTIVE);
+      newUser.set('password', randomPassword);
+      var Person = Parse.Object.extend("Person");
+      var newPerson = new Person();
+      newPerson.set('cpf', req.params.cpf);
+      newUser.set('personPointer',newPerson);
+
+      newUser.save().then(function (createdUser) {
+        verifyAndCreateVindiUser(createdUser)
+      }).catch(function (error) {
+        return res.error(error);
+      })
+    }
+  }).catch(function (error) {
+    return res.error(error);
+  })
+})
+
+function verifyAndCreateVindiUser(user) {
+
+}
