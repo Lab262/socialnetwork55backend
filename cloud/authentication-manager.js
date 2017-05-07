@@ -1,8 +1,8 @@
 const SubscriptionStatus = {
-  ACTIVE: 0,
-  CANCELED: 1,
-  DEFAULTING: 2,
-  INACTIVE: 3,
+  INACTIVE: 0,
+  ACTIVE: 1,
+  CANCELED: 2,
+  DEFAULTING: 3,
   PENDINGVISIT: 4
 }
 
@@ -106,10 +106,11 @@ Parse.Cloud.define('membershipRegistration', function (req, res) {
 
   userExistsQuery.find().then(function (users) {
     if (users.length > 0) { //is already registered
-      if (users[0].subscriptionStatus != SubscriptionStatus.ACTIVE) {
-        res.error({ msg: "User already with an active subscription " });
+      if (users[0].get('subscriptionStatus') != SubscriptionStatus.ACTIVE) {
+                res.success("vindi");
+        // verifyAndCreateVindiUser(users[0])
       } else {
-        verifyAndCreateVindiUser(users[0])
+        res.error({ msg: "User already with an active subscription " });
       }
     } else {
       var User = Parse.Object.extend("User");
@@ -125,7 +126,8 @@ Parse.Cloud.define('membershipRegistration', function (req, res) {
       newUser.set('personPointer',newPerson);
 
       newUser.save().then(function (createdUser) {
-        verifyAndCreateVindiUser(createdUser)
+                res.success("vindi criano");
+
       }).catch(function (error) {
         return res.error(error);
       })
