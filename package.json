@@ -12,6 +12,7 @@
     "express": "~4.11.x",
     "google-auth-library": "^0.10.0",
     "googleapis": "^18.0.0",
+    "js2xmlparser": "^3.0.0",
     "kerberos": "~0.0.x",
     "parse": "~1.8.0",
     "parse-server": "*",

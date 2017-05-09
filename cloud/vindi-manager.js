@@ -1,19 +1,36 @@
 
 Parse.Cloud.define('vindiManager', function (req, res) {
 
-  Parse.Cloud.httpRequest({
-    method: req.params.requestMethod,
-    url: 'https://app.vindi.com.br:443/api/v1/' + req.params.pathPlusParams,
-    body: req.params.requestBody,
-    params: req.params.requestParams,
-    headers: {
-      "Authorization": "Basic SWNHWjBxc3dPOExUMGh3M1U5SnpWNU5PcEdrWnQ2cWY6KioqKiogSGlkZGVuIGNyZWRlbnRpYWxzICoqKioq"
-    }
-  }).then(function(httpResponse) {
-    return res.success(httpResponse.data)
-
-  }, function(httpResponse) {
-    return res.error(httpResponse)
-    // console.error('Request failed with response code ' + httpResponse.status);
-  });
+  performVindiRequest(req.params.requestMethod, 
+  req.params.pathPlusParams, 
+  req.params.requestBody, 
+  req.params.requestParams).then(function(httpResponse) {
+    return res.success(httpResponse.data);
+  }).catch(function(error){ 
+    return res.error(error)
+  })
 });
+
+function performVindiRequest(requestMethod, pathPlusParams, requestBody, requestParams) {
+    return Parse.Cloud.httpRequest({
+      method: requestMethod,
+      url: 'https://app.vindi.com.br:443/api/v1/' + pathPlusParams,
+      body: requestBody,
+      params: requestParams,
+      headers: {
+        "Authorization": "Basic SWNHWjBxc3dPOExUMGh3M1U5SnpWNU5PcEdrWnQ2cWY6KioqKiogSGlkZGVuIGNyZWRlbnRpYWxzICoqKioq"
+      }
+    })
+}
+
+function searchVindiUserByCPF(cpf) {
+  return performVindiRequest('GET', 'customers', null, 'query= registry_code=' + cpf + ' status!=archived');
+}
+
+function createVindiUserWithData(userData) {
+    return performVindiRequest('POST', 'customers', userData, null);
+}
+
+exports.performVindiRequest = performVindiRequest;
+exports.searchVindiUserByCPF = searchVindiUserByCPF;
+exports.createVindiUserWithData = createVindiUserWithData;
