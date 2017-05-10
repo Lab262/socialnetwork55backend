@@ -1,0 +1,15 @@
+TEST CASES 55lab
+
+try where(status) -> answer -> next action
+
+process: cowork_register
+try to create a cowork user where(cpf already registered and status active) -> error
+try to create a cowork user where(email already registered and status active) -> error
+try to create a cowork user where(cpf already registered, email not corresponding or registered, status inactive) -> error cpf being used by another email
+try to create a cowork user where(email already registered, cpf not corresponding or registered, status inactive) -> error another email already using this cpf
+try to create a cowork user where(cpf already registered and status inactive) -> success -> vindi_register
+try to create a cowork user where(email already registered and status inactive) -> success -> vindi_register
+
+process: vindi_register
+
+process: bling_register

@@ -7,7 +7,8 @@ const SubscriptionStatus = {
   ACTIVE: 1,
   CANCELED: 2,
   DEFAULTING: 3,
-  PENDINGVISIT: 4
+  PENDINGVISIT: 4,
+  TRYINGTOBUY: 5
 }
 
 const BlingContactStatus = {  //BLING STATUS E-excluido I-inativo A-ativo S-sem movimento
@@ -90,51 +91,49 @@ Parse.Cloud.define('membershipLogin', function (req, res) {
 })
 
 Parse.Cloud.define('membershipRegistration', function (req, res) {
+  var CPFValidator = require("cpf_cnpj").CPF;
+  var emailValidator = require("email-validator");
+  if (CPFValidator.isValid(req.params.cpf, true) == false) {
+    return res.error({ msg: "Invalid CPF" });
+  } else if (emailValidator.validate(req.params.email) == false) {
+    return res.error({ msg: "Invalid email" });
+  }
   var userToRegister = null;
-  findUserByEmailAndCpf(req.params.email, req.params.cpf, res).then(function (users) {
-    if (users.length > 0) { //is already registered
-      if (users[0].get('subscriptionStatus') != SubscriptionStatus.ACTIVE) {
-        userToRegister = users[0]
-        return verifyAndCreateVindiUser(userToRegister, res);
-      } else {
-        return res.error({ msg: "User already with an active subscription " });
-      }
-    } else { //is not registered
-      createNewUserPerson(req.params.email, req.params.cpf, req.params.name, res).then(function (createdUser) {
-        userToRegister = createdUser
-        return verifyAndCreateVindiUser(userToRegister, res)
-      }).catch(function (error) {
-        return res.error(error);
-      })
-    }
+  findUserByEmailOrCpf(req.params.email, req.params.cpf, res).then(function (users) {
+    return verifyAndCreateUserCowork(users, req.params)
+  }).then(function (userCowork) {
+    userToRegister = userCowork
+    return verifyAndCreateVindiUser(userCowork, res);
   }).then(function (vindiHttpResponse) {
     return verifyAndCreateBlingUser(userToRegister);
   }).then(function (blingHttpRequest) {
-    res.success(blingHttpRequest);
-
+    return res.success(blingHttpRequest);
   }).catch(function (error) {
     return res.error(error);
   })
 })
 
-function findUserByEmailAndCpf(email, cpf, res) {
+function findUserByEmailOrCpf(email, cpf, res) {
   var userExistsQuery = new Parse.Query(Parse.User);
   userExistsQuery.equalTo("username", email);
   var PersonObject = Parse.Object.extend("Person");
-  var innerPersonQuery = new Parse.Query(PersonObject);
-  innerPersonQuery.equalTo("cpf", cpf);
-  userExistsQuery.matchesQuery("personPointer", innerPersonQuery);
-  userExistsQuery.include('personPointer')
-  return userExistsQuery.find()
+
+  var personExistsQuery = new Parse.Query(PersonObject);
+  personExistsQuery.equalTo("cpf", cpf);
+  var userPersonExistQuery = new Parse.Query(Parse.User);
+  userPersonExistQuery.matchesQuery("personPointer", personExistsQuery);
+  var mainQuery = Parse.Query.or(userExistsQuery, userPersonExistQuery);
+  mainQuery.include('personPointer')
+  return mainQuery.find()
 }
 
-function createNewUserPerson(email, cpf, name, res) {
+function createNewUserPerson(email, cpf, name, status) {
   var User = Parse.Object.extend("User");
   var newUser = new User();
   var randomPassword = Math.random().toString(36);
   newUser.set('username', email);
   newUser.set('email', email);
-  newUser.set('subscriptionStatus', SubscriptionStatus.INACTIVE);
+  newUser.set('subscriptionStatus', status);
   newUser.set('password', randomPassword);
   var Person = Parse.Object.extend("Person");
   var newPerson = new Person();
@@ -142,6 +141,32 @@ function createNewUserPerson(email, cpf, name, res) {
   newPerson.set('name', name)
   newUser.set('personPointer', newPerson);
   return newUser.save()
+}
+
+function verifyAndCreateUserCowork(users, userParams) {
+  return new Promise(function (fulfill, reject) {
+    if (users.length > 0) { //is already registered
+      userToRegister = users[0]
+      var CPFValidator = require("cpf_cnpj").CPF;
+      var existentUserCPF = CPFValidator.strip(userToRegister.get('personPointer').get('cpf'));
+      var requestedUserCPF = CPFValidator.strip(userParams.cpf);
+      if (existentUserCPF != requestedUserCPF) {
+        reject({ msg: "Email already using another CPF" });
+      } else if (users.get('email') != userParams.email) {
+        reject({ msg: "CPF already being used another email" });
+      } else if (userToRegister.get('subscriptionStatus') != SubscriptionStatus.ACTIVE) {
+        fulfill(userToRegister)
+      } else {
+        reject({ msg: "User already with an active subscription " });
+      }
+    } else { //is not registered
+      createNewUserPerson(userParams.email, userParams.cpf, userParams.name, SubscriptionStatus.TRYINGTOBUY).then(function (createdUser) {
+        fulfill(createdUser)
+      }).catch(function (err) {
+        reject(err);
+      });
+    }
+  })
 }
 
 function verifyAndCreateVindiUser(user, res) {
@@ -155,7 +180,7 @@ function verifyAndCreateVindiUser(user, res) {
         VindiManager.createVindiUserWithData({
           "name": person.get('name'),
           "email": user.get('email'),
-          "registry_code": person.get('cpf')
+          "registry_code": person.get('cpf') //TODO: STATUS
         }).then(function (httpResponse) {
           fulfill(httpResponse)
         }).catch(function (error) {
@@ -170,16 +195,34 @@ function verifyAndCreateVindiUser(user, res) {
 
 function verifyAndCreateBlingUser(user) {
   return new Promise(function (fulfill, reject) {
+    var blingUser = {
+      "nome": user.get('personPointer').get('name'),
+      "tipoPessoa": "F", //F - Física, J - Jurídica
+      "contribuinte": 9, //1 - Contribuinte do ICMS, 2 - Contribuinte isento do ICMS ou 9 - Não contribuinte
+      "cpf_cnpj": user.get('personPointer').get('cpf'),
+      "email": user.get('email')
+    }
     BlingManager.searchBlingUserByCPF(user.get('personPointer').get('cpf')).then(function (contacts) {
-      var errors = httpResponse.data['retorno']['erros'];
       if (contacts.length <= 0) { //user not found
         //CREATE NEW USER 
+        BlingManager.createBlingUserWithData(blingUser).then(function (httpResponse) {
+          fulfill(httpResponse)
+        }).catch(function (error) {
+          reject(error)
+        })
       } else {
-        var contact = contacts[contact.length - 1]
+        var contact = contacts[contacts.length - 1]["contato"];
         if (contact["situacao"] != BlingContactStatus.ACTIVE) { //user inactive
-          //update user to active
+          //UPDATE user to active - API DONT EXISTS
+          //TODO: TEST IF IS POSSIBLE TO CREATE NF WITH USER INACTIVE          
+          fulfill(contact)
+          // BlingManager.createBlingUserWithData(blingUser).then(function (httpResponse) {
+          //   fulfill(httpResponse)
+          // }).catch(function (error) {
+          //   reject(error)
+          // })
         } else {
-          // return user 
+          fulfill(contact)
         }
       }
     }).catch(function (error) {
