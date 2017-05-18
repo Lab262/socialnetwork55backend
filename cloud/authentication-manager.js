@@ -105,9 +105,11 @@ Parse.Cloud.define('membershipRegistration', function (req, res) {
     userToRegister = userCowork
     return verifyAndCreateVindiUser(userCowork, res);
   }).then(function (vindiHttpResponse) {
-    return verifyAndCreateBlingUser(userToRegister);
+    return verifyAndCreateBlingUser(userToRegister);  
+    //TODO: user to active - API DONT EXISTS User needs being created as active 
   }).then(function (blingHttpRequest) {
-    return res.success(blingHttpRequest);
+    return res.success(blingHttpRequest); 
+    //TODO: VERIFY AND CREATE USER EXCELL 
   }).catch(function (error) {
     return res.error(error);
   })
@@ -196,6 +198,8 @@ function verifyAndCreateVindiUser(user, res) {
 function verifyAndCreateBlingUser(user) {
   return new Promise(function (fulfill, reject) {
     var blingUser = {
+        //TODO: CREATE USER AS ACTIVE - CHECK HOW AFFECT THE PROCESS - MAYBE FILTER BY OBSERVACAO
+        //TODO: ADD DANDOS NECESSARIOS PEDIDO
       "nome": user.get('personPointer').get('name'),
       "tipoPessoa": "F", //F - Física, J - Jurídica
       "contribuinte": 9, //1 - Contribuinte do ICMS, 2 - Contribuinte isento do ICMS ou 9 - Não contribuinte
@@ -212,18 +216,13 @@ function verifyAndCreateBlingUser(user) {
         })
       } else {
         var contact = contacts[contacts.length - 1]["contato"];
-        if (contact["situacao"] != BlingContactStatus.ACTIVE) { //user inactive
-          //UPDATE user to active - API DONT EXISTS
-          //TODO: TEST IF IS POSSIBLE TO CREATE NF WITH USER INACTIVE          
-          fulfill(contact)
-          // BlingManager.createBlingUserWithData(blingUser).then(function (httpResponse) {
-          //   fulfill(httpResponse)
-          // }).catch(function (error) {
-          //   reject(error)
-          // })
-        } else {
-          fulfill(contact)
-        }
+        // if (contact["situacao"] != BlingContactStatus.ACTIVE) { //user inactive
+          fulfill(contact)           //TODO: user to active - API DONT EXISTS User needs being created as active 
+
+
+        // } else {
+          // fulfill(contact)
+        // }
       }
     }).catch(function (error) {
       reject(error)
