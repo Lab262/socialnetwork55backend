@@ -49,7 +49,7 @@ function resetUserPassword(userInfo, res) {
 
 Parse.Cloud.define('membershipLogin', function (req, res) {
 
-  var loginInfo = {};
+  var loginInfo = {}; //TODO: ADD ADITIONAL DATA FOR VINDI AND BLING
   Parse.User.logIn(req.paras.email, req.params.password).then(function (user) {
     loginInfo = user;
     var person = fetchedComment.get("personPointer");
@@ -182,7 +182,7 @@ function verifyAndCreateVindiUser(user, res) {
         VindiManager.createVindiUserWithData({
           "name": person.get('name'),
           "email": user.get('email'),
-          "registry_code": person.get('cpf') //TODO: STATUS
+          "registry_code": person.get('cpf') //TODO: STATUS ON VINDI
         }).then(function (httpResponse) {
           fulfill(httpResponse)
         }).catch(function (error) {
