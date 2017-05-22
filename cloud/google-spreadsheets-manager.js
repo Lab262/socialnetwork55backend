@@ -111,7 +111,7 @@ function storeToken(token) {
     console.log('Token stored to ' + TOKEN_PATH);
 }
 
-Parse.Cloud.define('lisUsersGoogleSpreadsheets', function (req, res) {
+Parse.Cloud.define('listUsersGoogleSpreadsheets', function (req, res) {
     var sheets = google.sheets('v4');
     sheets.spreadsheets.values.get({
         auth: this.authClient,

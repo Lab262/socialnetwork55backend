@@ -49,8 +49,8 @@ function resetUserPassword(userInfo, res) {
 
 Parse.Cloud.define('membershipLogin', function (req, res) {
 
-  var loginInfo = {}; //TODO: ADD ADITIONAL DATA FOR VINDI AND BLING
-  Parse.User.logIn(req.paras.email, req.params.password).then(function (user) {
+  var loginInfo = {};
+  Parse.User.logIn(req.params.email, req.params.password).then(function (user) {
     loginInfo = user;
     var person = fetchedComment.get("personPointer");
     return person.fetch()
@@ -93,7 +93,7 @@ Parse.Cloud.define('membershipLogin', function (req, res) {
 Parse.Cloud.define('membershipRegistration', function (req, res) {
   var CPFValidator = require("cpf_cnpj").CPF;
   var emailValidator = require("email-validator");
-  if (CPFValidator.isValid(req.params.cpf, true) == false) {
+  if (CPFValidator.isValid(req.params.person.cpf, true) == false) {
     return res.error({ msg: "Invalid CPF" });
   } else if (emailValidator.validate(req.params.email) == false) {
     return res.error({ msg: "Invalid email" });
@@ -105,10 +105,9 @@ Parse.Cloud.define('membershipRegistration', function (req, res) {
     userToRegister = userCowork
     return verifyAndCreateVindiUser(userCowork, res);
   }).then(function (vindiHttpResponse) {
-    return verifyAndCreateBlingUser(userToRegister);  
-    //TODO: user to active - API DONT EXISTS User needs being created as active 
+    return verifyAndCreateBlingUser(userToRegister);
   }).then(function (blingHttpRequest) {
-    return res.success(blingHttpRequest); 
+    return res.success(blingHttpRequest);
     //TODO: VERIFY AND CREATE USER EXCELL 
   }).catch(function (error) {
     return res.error(error);
@@ -129,20 +128,128 @@ function findUserByEmailOrCpf(email, cpf, res) {
   return mainQuery.find()
 }
 
-function createNewUserPerson(email, cpf, name, status) {
-  var User = Parse.Object.extend("User");
-  var newUser = new User();
-  var randomPassword = Math.random().toString(36);
-  newUser.set('username', email);
-  newUser.set('email', email);
-  newUser.set('subscriptionStatus', status);
-  newUser.set('password', randomPassword);
-  var Person = Parse.Object.extend("Person");
-  var newPerson = new Person();
-  newPerson.set('cpf', cpf);
-  newPerson.set('name', name)
-  newUser.set('personPointer', newPerson);
-  return newUser.save()
+function createNewUserPerson(userParams, status) {
+  return new Promise(function (fulfill, reject) {
+
+    var User = Parse.Object.extend("User");
+    var newUser = new User();
+    var randomPassword = Math.random().toString(36);
+    newUser.set('username', userParams.email);
+    newUser.set('email', userParams.email);
+    newUser.set('subscriptionStatus', status);
+    newUser.set('password', randomPassword);
+
+    var Person = Parse.Object.extend("Person");
+    var newPerson = new Person();
+    newPerson.set('cpf', userParams.person.cpf);
+    newPerson.set('name', userParams.person.name);
+    newPerson.set('rg', userParams.person.rg);
+
+    var Address = Parse.Object.extend("Address");
+    var newAddress = new Address();
+    newAddress.set('street', userParams.person.address.street);
+    newAddress.set('number', userParams.person.address.number);
+    newAddress.set('neighborhood', userParams.person.address.neighborhood);
+    newAddress.set('zip', userParams.person.address.zip);
+    newAddress.set('city', userParams.person.address.city);
+    newAddress.set('uf', userParams.person.address.uf);
+    newAddress.set('isMain', userParams.person.address.isMain);
+
+    var Phone = Parse.Object.extend("Phone");
+    var newPhone = new Phone();
+    newPhone.set('number', userParams.person.phone.number);
+    newPhone.set('isMain', userParams.person.phone.isMain);
+
+    newUser.set('personPointer', newPerson);
+
+    newPhone.save().then(function (newPhone) {
+      var phonesRelation = newPerson.relation("phones");
+      phonesRelation.add(newPhone);
+      return newAddress.save()
+    }).then(function (newAddress) {
+      var addressesRelation = newPerson.relation("addresses");
+      addressesRelation.add(newAddress);
+      newUser.set('personPointer', newPerson);
+      return newUser.save()
+    }).then(function (newUser) {
+      fulfill(newUser)
+    }).catch(function (err) {
+      reject(err)
+    });
+
+  });
+}
+
+function updateUserPerson(userParams, oldUser,status) {
+  return new Promise(function (fulfill, reject) {
+
+    var newUser = oldUser;
+    var randomPassword = Math.random().toString(36);
+    newUser.set('username', userParams.email);
+    newUser.set('email', userParams.email);
+    newUser.set('subscriptionStatus', status);
+    newUser.set('password', randomPassword);
+
+    var newPerson = oldUser.get('personPointer');
+    newPerson.set('cpf', userParams.person.cpf);
+    newPerson.set('name', userParams.person.name);
+    newPerson.set('rg', userParams.person.rg);
+    var newPhone = null;
+    var isNewPhone = false
+    var newAddress = null;
+    var isNewAddress = false
+    newPerson.get('phones').query().equalTo('isMain').find().then(function (phones) {
+      if (mainPhones.length > 0) { //add phones
+        var newPhone = mainPhones[0];
+
+      } else {
+        var Phone = Parse.Object.extend("Phone");
+        var newPhone = new Phone();
+        isNewPhone = true
+      }
+      newPhone.set('number', userParams.person.phone.number);
+      newPhone.set('isMain', userParams.person.phone.isMain);
+      return newPhone.save();
+
+    }).then(function (newPhone) {
+      if (isNewPhone == true) {
+        var phonesRelation = newPerson.relation("phones");
+        phonesRelation.add(newPhone);
+      }
+
+      if (addresses.length > 0) {
+        newAddress = addresses[0];
+      } else {
+        var Address = Parse.Object.extend("Address");
+        var newAddress = new Address();
+        isNewAddress = true
+      }
+
+      newAddress.set('street', userParams.person.address.street);
+      newAddress.set('number', userParams.person.address.number);
+      newAddress.set('neighborhood', userParams.person.address.neighborhood);
+      newAddress.set('zip', userParams.person.address.zip);
+      newAddress.set('city', userParams.person.address.city);
+      newAddress.set('uf', userParams.person.address.uf);
+      newAddress.set('isMain', userParams.person.address.isMain);
+
+      return newAddress.save()
+    }).then(function (newAddress) {
+      if (isNewAddress == true) {
+        var addressesRelation = newPerson.relation("addresses");
+        addressesRelation.add(newAddress);
+      }
+      newUser.set('personPointer', newPerson);
+      return newUser.save()
+    }).then(function (addresses) {
+      newUser.set('personPointer', newPerson);
+      return newUser.save()
+    }).then(function (newUser) {
+      fulfill(newUser)
+    }).catch(function (err) {
+      reject(err)
+    });
+  });
 }
 
 function verifyAndCreateUserCowork(users, userParams) {
@@ -151,18 +258,22 @@ function verifyAndCreateUserCowork(users, userParams) {
       userToRegister = users[0]
       var CPFValidator = require("cpf_cnpj").CPF;
       var existentUserCPF = CPFValidator.strip(userToRegister.get('personPointer').get('cpf'));
-      var requestedUserCPF = CPFValidator.strip(userParams.cpf);
+      var requestedUserCPF = CPFValidator.strip(userParams.person.cpf);
       if (existentUserCPF != requestedUserCPF) {
         reject({ msg: "Email already using another CPF" });
-      } else if (users.get('email') != userParams.email) {
+      } else if (userToRegister.get('username') != userParams.email) {
         reject({ msg: "CPF already being used another email" });
       } else if (userToRegister.get('subscriptionStatus') != SubscriptionStatus.ACTIVE) {
-        fulfill(userToRegister)
+        updateUserPerson(userParams, userToRegister, SubscriptionStatus.TRYINGTOBUY).then(function (createdUser) {
+          fulfill(updatedUser)
+        }).catch(function (err) {
+          reject(err);
+        });
       } else {
         reject({ msg: "User already with an active subscription " });
       }
     } else { //is not registered
-      createNewUserPerson(userParams.email, userParams.cpf, userParams.name, SubscriptionStatus.TRYINGTOBUY).then(function (createdUser) {
+      createNewUserPerson(userParams, SubscriptionStatus.TRYINGTOBUY).then(function (createdUser) {
         fulfill(createdUser)
       }).catch(function (err) {
         reject(err);
@@ -172,23 +283,50 @@ function verifyAndCreateUserCowork(users, userParams) {
 }
 
 function verifyAndCreateVindiUser(user, res) {
-  var person = user.get('personPointer')
+  var person = user.get('personPointer');
+  var phone = person.get('phones');
+  var vindiUserData = {
+    "name": person.get('name'),
+    "email": user.get('email'),
+    "registry_code": person.get('cpf'),
+    "status": "inactive"
+  };
   return new Promise(function (fulfill, reject) {
     VindiManager.searchVindiUserByCPF(person.get('cpf'), res).then(function (httpResponse) {
       if (httpResponse.data["customers"].length > 0) { // user registered on vindi
-        //VERIFY USER ON BLING 
         fulfill(httpResponse)
       } else { //user not registered on vindi
-        VindiManager.createVindiUserWithData({
-          "name": person.get('name'),
-          "email": user.get('email'),
-          "registry_code": person.get('cpf') //TODO: STATUS ON VINDI
-        }).then(function (httpResponse) {
-          fulfill(httpResponse)
-        }).catch(function (error) {
-          reject(error);
-        })
+        return person.get('addresses').query().equalTo('isMain').find();
       }
+    }).then(function (mainAddresses) {
+      if (mainAddresses.length > 0) {
+        var address = mainAddresses[0];
+        vindiUserData["address"] = { //add address
+          "street": address.get('street'),
+          "number": address.get('numero'),
+          "neighborhood": address.get('bairro'),
+          "zipcode": address.get('zip'),
+          "city": address.get('cidade'),
+          "state": address.get('uf'),
+          "country": 'Brasil'
+        };
+      }
+
+      return person.get('phones').query().equalTo('isMain').find();
+    }).then(function (mainPhones) {
+      if (mainPhones.length > 0) { //add phones
+        var phone = mainPhones[0];
+        vindiUserData["phones"] = [
+          {
+            "phone_type": "cell",
+            number: phone.get('number'),
+            exension: ""
+          }
+        ]
+      }
+      return VindiManager.createVindiUserWithData(vindiUserData)
+    }).then(function (httpResponse) {
+      fulfill(httpResponse)
     }).catch(function (error) {
       reject(error);
     })
@@ -196,15 +334,26 @@ function verifyAndCreateVindiUser(user, res) {
 }
 
 function verifyAndCreateBlingUser(user) {
+  var person = user.get('personPointer');
+  var address = person.get('addresses');
+  var phone = person.get('phones');
+
   return new Promise(function (fulfill, reject) {
     var blingUser = {
-        //TODO: CREATE USER AS ACTIVE - CHECK HOW AFFECT THE PROCESS - MAYBE FILTER BY OBSERVACAO
-        //TODO: ADD DANDOS NECESSARIOS PEDIDO
-      "nome": user.get('personPointer').get('name'),
+      "nome": person.get('name'),
       "tipoPessoa": "F", //F - Física, J - Jurídica
       "contribuinte": 9, //1 - Contribuinte do ICMS, 2 - Contribuinte isento do ICMS ou 9 - Não contribuinte
-      "cpf_cnpj": user.get('personPointer').get('cpf'),
-      "email": user.get('email')
+      "cpf_cnpj": person.get('cpf'),
+      "email": user.get('email'),
+      "rg": person.get('rg'),
+      "endereco": address.get('street'),
+      "numero": address.get('numero'),
+      "bairro": address.get('bairro'),
+      "cep": address.get('zip'),
+      "cidade": address.get('cidade'),
+      "uf": address.get('uf'),
+      "fone": phone.get('number'),
+      "situacao": BlingContactStatus.ACTIVE
     }
     BlingManager.searchBlingUserByCPF(user.get('personPointer').get('cpf')).then(function (contacts) {
       if (contacts.length <= 0) { //user not found
@@ -217,15 +366,17 @@ function verifyAndCreateBlingUser(user) {
       } else {
         var contact = contacts[contacts.length - 1]["contato"];
         // if (contact["situacao"] != BlingContactStatus.ACTIVE) { //user inactive
-          fulfill(contact)           //TODO: user to active - API DONT EXISTS User needs being created as active 
-
-
+        fulfill(contact)
         // } else {
-          // fulfill(contact)
+        // fulfill(contact)
         // }
       }
     }).catch(function (error) {
       reject(error)
     })
   })
+
+  function verifyAndCreateGooleSheetsUser(user) {
+
+  }
 }
