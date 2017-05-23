@@ -296,10 +296,11 @@ function verifyAndCreateVindiUser(user, res) {
     VindiManager.searchVindiUserByCPF(person.get('cpf'), res).then(function (httpResponse) {
       if (httpResponse.data["customers"].length > 0) { // user registered on vindi
         existingUserId = httpResponse.data["customers"][0]["id"];
+        if (httpResponse.data["customers"][0]["phones"].length > 0) {
+          existingPhoneId = httpResponse.data["customers"][0]["phones"][0]["id"];
+        }
       }
-      if (httpResponse.data["customers"][0]["phones"].length > 0) {
-        existingPhoneId = httpResponse.data["customers"][0]["phones"][0]["id"];
-      }
+
       return person.get('addresses').query().equalTo('isMain', true).find();
     }).then(function (mainAddresses) {
       if (mainAddresses.length > 0) {
