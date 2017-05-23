@@ -152,7 +152,7 @@ function createNewUserPerson(userParams, status) {
     newAddress.set('neighborhood', userParams.person.address.neighborhood);
     newAddress.set('zip', userParams.person.address.zip);
     newAddress.set('city', userParams.person.address.city);
-    newAddress.set('uf', userParams.person.address.uf);
+    newAddress.set('state', userParams.person.address.state);
     newAddress.set('isMain', userParams.person.address.isMain);
 
     var Phone = Parse.Object.extend("Phone");
@@ -231,7 +231,7 @@ function updateUserPerson(userParams, oldUser, status) {
       newAddress.set('neighborhood', userParams.person.address.neighborhood);
       newAddress.set('zip', userParams.person.address.zip);
       newAddress.set('city', userParams.person.address.city);
-      newAddress.set('uf', userParams.person.address.uf);
+      newAddress.set('state', userParams.person.address.state);
       newAddress.set('isMain', userParams.person.address.isMain);
 
       return newAddress.save()
@@ -294,7 +294,7 @@ function verifyAndCreateVindiUser(user, res) {
   return new Promise(function (fulfill, reject) {
     VindiManager.searchVindiUserByCPF(person.get('cpf'), res).then(function (httpResponse) {
       if (httpResponse.data["customers"].length > 0) { // user registered on vindi
-        existingUserId = httpResponse.data["customers"]["id"];
+        existingUserId = httpResponse.data["customers"][0]["id"];
       }
       return person.get('addresses').query().equalTo('isMain',true).find();
     }).then(function (mainAddresses) {
@@ -302,12 +302,12 @@ function verifyAndCreateVindiUser(user, res) {
         var address = mainAddresses[0];
         vindiUserData["address"] = { //add address
           "street": address.get('street'),
-          "number": address.get('numero'),
-          "neighborhood": address.get('bairro'),
+          "number": address.get('number'),
+          "neighborhood": address.get('neighborhood'),
           "zipcode": address.get('zip'),
-          "city": address.get('cidade'),
-          "state": address.get('uf'),
-          "country": 'Brasil'
+          "city": address.get('city'),
+          "state": address.get('state'),
+          "country": 'BR'
         };
       }
       return person.get('phones').query().equalTo('isMain',true).find();
@@ -316,13 +316,12 @@ function verifyAndCreateVindiUser(user, res) {
         var phone = mainPhones[0];
         vindiUserData["phones"] = [
           {
-            "phone_type": "cell",
-            number: phone.get('number'),
+            phone_type: "mobile",
+            number:'5561999619322',
             exension: ""
           }
         ]
       }
-
       if (existingUserId == null) {
         return VindiManager.createVindiUserWithData(vindiUserData);
       } else {
@@ -354,7 +353,7 @@ function verifyAndCreateBlingUser(user) {
       "bairro": address.get('bairro'),
       "cep": address.get('zip'),
       "cidade": address.get('cidade'),
-      "uf": address.get('uf'),
+      "uf": address.get('state'),
       "fone": phone.get('number'),
       "situacao": BlingContactStatus.ACTIVE
     }

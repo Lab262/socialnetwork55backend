@@ -18,7 +18,8 @@ function performVindiRequest(requestMethod, pathPlusParams, requestBody, request
       body: requestBody,
       params: requestParams,
       headers: {
-        "Authorization": "Basic SWNHWjBxc3dPOExUMGh3M1U5SnpWNU5PcEdrWnQ2cWY6KioqKiogSGlkZGVuIGNyZWRlbnRpYWxzICoqKioq"
+        "Authorization": "Basic SWNHWjBxc3dPOExUMGh3M1U5SnpWNU5PcEdrWnQ2cWY6KioqKiogSGlkZGVuIGNyZWRlbnRpYWxzICoqKioq",
+        "Content-Type": "application/json; charset=UTF-8"
       }
     })
 }
