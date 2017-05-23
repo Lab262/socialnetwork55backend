@@ -111,6 +111,11 @@ Parse.Cloud.define('membershipRegistration', function (req, res) {
     return verifyAndCreateGooleSheetsUser(userToRegister);
   }).then(function (googleSheetsHttpRequest) {
     return res.success(googleSheetsHttpRequest);
+    //TODO: vindi tentativa de pagamento
+    //TODO: sendgrid erro de tentativa de pagamento
+    //TODO: sucesso ATUALIZA USUario para ativo
+    //TODO: sendgrid email para usuario definir senha 
+    //TODO: Gera compras com pagamento previsto e parcelas usando status e nao 12 compras diferentes
   }).catch(function (error) {
     return res.error(error);
   })
@@ -413,7 +418,6 @@ function verifyAndCreateGooleSheetsUser(user) {
           "F",
           user.get('personPointer').get('rg'),
           SubscriptionStatus.TRYINGTOBUY
-          // user.Address //add address //add phone
         ]
       ]
     }
@@ -446,7 +450,7 @@ function verifyAndCreateGooleSheetsUser(user) {
       if (isNewUser == true) {
         return GoogleSpreadsheetsManager.createNewUserWithData(newUser);
       } else {
-        return GoogleSpreadsheetsManager.updateUserWithData(newUser,googlePayload.range);
+        return GoogleSpreadsheetsManager.updateUserWithData(newUser, googlePayload.range);
       }
     }).then(function (userSaved) {
       fulfill(userSaved);
