@@ -107,8 +107,9 @@ Parse.Cloud.define('membershipRegistration', function (req, res) {
   }).then(function (vindiHttpResponse) {
     return verifyAndCreateBlingUser(userToRegister);
   }).then(function (blingHttpRequest) {
-    return res.success(blingHttpRequest);
-    //TODO: VERIFY AND CREATE USER EXCELL 
+    return verifyAndCreateGooleSheetsUser(userToRegister);
+  }).then(function (googleSheetsHttpRequest) {
+    return res.success(googleSheetsHttpRequest);
   }).catch(function (error) {
     return res.error(error);
   })
@@ -395,7 +396,17 @@ function verifyAndCreateBlingUser(user) {
     })
   })
 
-  function verifyAndCreateGooleSheetsUser(user) {
+  
+}
 
-  }
+function verifyAndCreateGooleSheetsUser(user) {
+
+  return new Promise(function(fulfill, reject){
+    fulfill(user);
+  })
+  //create promise
+  //search existing user 
+  //create new user if don't exist -> return user
+  //udpate user if already exist -> return user
+  
 }
