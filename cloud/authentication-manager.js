@@ -198,7 +198,7 @@ function updateUserPerson(userParams, oldUser, status) {
     var isNewPhone = false
     var newAddress = null;
     var isNewAddress = false
-    newPerson.get('phones').query().equalTo('isMain',true).find().then(function (mainPhones) {
+    newPerson.get('phones').query().equalTo('isMain', true).find().then(function (mainPhones) {
       if (mainPhones.length > 0) { //add phones
         var newPhone = mainPhones[0];
 
@@ -216,7 +216,7 @@ function updateUserPerson(userParams, oldUser, status) {
         var phonesRelation = newPerson.relation("phones");
         phonesRelation.add(newPhone);
       }
-      return newPerson.get('addresses').query().equalTo('isMain',true).find()
+      return newPerson.get('addresses').query().equalTo('isMain', true).find()
     }).then(function (mainAddresses) {
       if (mainAddresses.length > 0) {
         newAddress = mainAddresses[0];
@@ -242,7 +242,7 @@ function updateUserPerson(userParams, oldUser, status) {
         addressesRelation.add(newAddress);
       }
       newUser.set('personPointer', newPerson);
-      return newUser.save(null,{useMasterKey: true})
+      return newUser.save(null, { useMasterKey: true })
     }).then(function (newUser) {
       fulfill(newUser)
     }).catch(function (err) {
@@ -291,12 +291,16 @@ function verifyAndCreateVindiUser(user, res) {
     "status": "inactive"
   };
   var existingUserId = null
+  var existingPhoneId = null
   return new Promise(function (fulfill, reject) {
     VindiManager.searchVindiUserByCPF(person.get('cpf'), res).then(function (httpResponse) {
       if (httpResponse.data["customers"].length > 0) { // user registered on vindi
         existingUserId = httpResponse.data["customers"][0]["id"];
       }
-      return person.get('addresses').query().equalTo('isMain',true).find();
+      if (httpResponse.data["customers"][0]["phones"].length > 0) {
+        existingPhoneId = httpResponse.data["customers"][0]["phones"][0]["id"];
+      }
+      return person.get('addresses').query().equalTo('isMain', true).find();
     }).then(function (mainAddresses) {
       if (mainAddresses.length > 0) {
         var address = mainAddresses[0];
@@ -310,17 +314,19 @@ function verifyAndCreateVindiUser(user, res) {
           "country": 'BR'
         };
       }
-      return person.get('phones').query().equalTo('isMain',true).find();
+      return person.get('phones').query().equalTo('isMain', true).find();
     }).then(function (mainPhones) {
       if (mainPhones.length > 0) { //add phones
         var phone = mainPhones[0];
-        vindiUserData["phones"] = [
-          {
-            phone_type: "mobile",
-            number:'5561999619322',
-            exension: ""
-          }
-        ]
+        var vindiPhoneData = {
+          phone_type: "mobile",
+          number: phone.get('number'),
+          exension: ""
+        };
+        if (existingPhoneId != null) {
+          vindiPhoneData["id"] = existingPhoneId;
+        }
+        vindiUserData["phones"] = [vindiPhoneData];
       }
       if (existingUserId == null) {
         return VindiManager.createVindiUserWithData(vindiUserData);
@@ -348,19 +354,29 @@ function verifyAndCreateBlingUser(user) {
       "cpf_cnpj": person.get('cpf'),
       "email": user.get('email'),
       "rg": person.get('rg'),
-      "endereco": address.get('street'),
-      "numero": address.get('numero'),
-      "bairro": address.get('bairro'),
-      "cep": address.get('zip'),
-      "cidade": address.get('cidade'),
-      "uf": address.get('state'),
-      "fone": phone.get('number'),
       "situacao": BlingContactStatus.ACTIVE
     }
     BlingManager.searchBlingUserByCPF(user.get('personPointer').get('cpf')).then(function (contacts) {
       if (contacts.length <= 0) { //user not found
         //CREATE NEW USER 
-        BlingManager.createBlingUserWithData(blingUser).then(function (httpResponse) {
+        person.get('addresses').query().equalTo('isMain', true).find().then(function (mainAddresses) {
+          if (mainAddresses.length > 0) {
+            var address = mainAddresses[0];
+            blingUser["endereco"] = address.get('street');
+            blingUser["numero"] = address.get('number');
+            blingUser["bairro"] = address.get('neighborhood');
+            blingUser["cep"] = address.get('zip');
+            blingUser["cidade"] = address.get('city');
+            blingUser["uf"] = address.get('state');
+          }
+          return person.get('phones').query().equalTo('isMain', true).find();
+        }).then(function (mainPhones) {
+          if (mainPhones.length > 0) { //add phones
+            var phone = mainPhones[0];
+            blingUser["fone"] = phone.get('number');
+          }
+          return BlingManager.createBlingUserWithData(blingUser)
+        }).then(function (httpResponse) {
           fulfill(httpResponse)
         }).catch(function (error) {
           reject(error)
