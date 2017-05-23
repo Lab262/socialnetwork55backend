@@ -1,6 +1,7 @@
 var path = require('path');
 var VindiManager = require(path.join(__dirname, '/vindi-manager.js'));
 var BlingManager = require(path.join(__dirname, '/bling-manager.js'));
+var GoogleSpreadsheetsManager = require(path.join(__dirname, '/google-spreadsheets-manager.js'));
 
 const SubscriptionStatus = {
   INACTIVE: 0,
@@ -396,17 +397,63 @@ function verifyAndCreateBlingUser(user) {
     })
   })
 
-  
+
 }
 
 function verifyAndCreateGooleSheetsUser(user) {
 
-  return new Promise(function(fulfill, reject){
-    fulfill(user);
-  })
-  //create promise
-  //search existing user 
-  //create new user if don't exist -> return user
-  //udpate user if already exist -> return user
-  
+  return new Promise(function (fulfill, reject) {
+
+    var newUser = {
+      "values": [
+        [
+          user.get('email'),
+          user.get('personPointer').get('name'),
+          user.get('personPointer').get('cpf'),
+          "F",
+          user.get('personPointer').get('rg'),
+          SubscriptionStatus.TRYINGTOBUY
+          // user.Address //add address //add phone
+        ]
+      ]
+    }
+    var isNewUser = false;
+    GoogleSpreadsheetsManager.findUserWithEmail(user.get('username')).then(function (users) {
+      if (users.length == 0) {
+        isNewUser = true
+      }
+      return user.get('personPointer').get('addresses').query().equalTo('isMain', true).find()
+
+    }).then(function (mainAddresses) {
+      if (mainAddresses.length > 0) {
+        var address = mainAddresses[0];
+        newUser.values[0].push(address.get('street'));
+        newUser.values[0].push(address.get('number'));
+        newUser.values[0].push(address.get('neighborhood'));
+        newUser.values[0].push(address.get('zip'));
+        newUser.values[0].push(address.get('city'));
+        newUser.values[0].push(address.get('state'));
+      }
+      return user.get('personPointer').get('phones').query().equalTo('isMain', true).find();
+    }).then(function (mainPhones) {
+      if (mainPhones.length > 0) { //add phones
+        var phone = mainPhones[0];
+        newUser.values[0].push(phone.get('number'));
+      }
+      if (isNewUser == true) {
+        return GoogleSpreadsheetsManager.createNewUserWithData(newUser);
+      } else {
+        //TODO: update User get user row in array and computade table colunms and rows to update
+        return GoogleSpreadsheetsManager.updateUserWithData(newUser);
+      }
+    }).then(function (userSaved) {
+      fulfill(userSaved);
+    }).catch(function (err) {
+      reject(err);
+    });
+
+  });
+
+
+
 }

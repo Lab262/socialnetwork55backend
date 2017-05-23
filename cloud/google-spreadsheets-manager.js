@@ -10,7 +10,7 @@ var SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googl
 var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
     process.env.USERPROFILE) + '/.credentials/';
 var TOKEN_PATH = TOKEN_DIR + 'sheets.googleapis.com-nodejs-quickstart.json';
-var authClient = null
+GoogleSpreadsheetsManager.authClient = null;
 
 
 //CHECK AUTHORIZATION
@@ -57,7 +57,7 @@ function authorize(credentials) {
             getNewToken(oauth2Client);
         } else {
             oauth2Client.credentials = JSON.parse(token);
-            this.authClient = oauth2Client
+            GoogleSpreadsheetsManager.authClient = oauth2Client
         }
     });
 }
@@ -88,7 +88,7 @@ function getNewToken(oauth2Client) {
                 return;
             }
             oauth2Client.credentials = token;
-            this.authClient = oauth2Client
+            GoogleSpreadsheetsManager.authClient = oauth2Client
             storeToken(token);
         });
     });
@@ -114,7 +114,7 @@ function storeToken(token) {
 Parse.Cloud.define('listUsersGoogleSpreadsheets', function (req, res) {
     var sheets = google.sheets('v4');
     sheets.spreadsheets.values.get({
-        auth: this.authClient,
+        auth: GoogleSpreadsheetsManager.authClient,
         spreadsheetId: '1VB4PIIW6OwWdbm9YFkiP0TX5seQluDymPirRURkNYWc',
         range: 'A2:D2',
     }, function (err, response) {
@@ -129,13 +129,10 @@ Parse.Cloud.define('listUsersGoogleSpreadsheets', function (req, res) {
             return res.success(rows);
         }
     });
-
 });
 
 Parse.Cloud.define('addUsersGoogleSpreadsheets', function (req, res) {
-
     var user = req.params.user
-
     var sheets = google.sheets('v4');
     sheets.spreadsheets.values.append({
         spreadsheetId: '1VB4PIIW6OwWdbm9YFkiP0TX5seQluDymPirRURkNYWc',
@@ -152,7 +149,7 @@ Parse.Cloud.define('addUsersGoogleSpreadsheets', function (req, res) {
                 ]
             ]
         },
-        auth: this.authClient
+        auth: GoogleSpreadsheetsManager.authClient
     }, function (err, response) {
         if (err) {
             // console.log('The API returned an error: ' + err);
@@ -162,3 +159,72 @@ Parse.Cloud.define('addUsersGoogleSpreadsheets', function (req, res) {
     });
 
 });
+
+
+function findUserWithEmail(email) {
+    return new Promise(function (fulfill, reject) {
+        var sheets = google.sheets('v4');
+        sheets.spreadsheets.values.get({
+            auth: GoogleSpreadsheetsManager.authClient,
+            spreadsheetId: '1VB4PIIW6OwWdbm9YFkiP0TX5seQluDymPirRURkNYWc',
+            range: 'A2:A',
+        }, function (err, response) {
+            if (err) {
+                // console.log('The API returned an error: ' + err);
+                reject(err);
+            } else {
+                var users = response.values;
+                users = users.filter(function (current) {
+                    return current[0] == email
+                });
+                fulfill(users);
+            }
+        })
+    });
+}
+
+function createNewUserWithData(userData) {
+    return new Promise(function (fulfill, reject) {
+        var sheets = google.sheets('v4');
+        sheets.spreadsheets.values.append({
+            spreadsheetId: '1VB4PIIW6OwWdbm9YFkiP0TX5seQluDymPirRURkNYWc',
+            range: 'A:M',
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            resource: userData,
+            auth: GoogleSpreadsheetsManager.authClient
+        }, function (err, response) {
+            if (err) {
+                // console.log('The API returned an error: ' + err);
+                reject(err);
+            }
+            fulfill(response);
+        });
+    });
+}
+
+function updateUserWithData(userData) {         //TODO: update User get user row in array and computade table colunms and rows to update
+    return new Promise(function (fulfill, reject) {
+        var sheets = google.sheets('v4');
+        sheets.spreadsheets.values.append({
+            spreadsheetId: '1VB4PIIW6OwWdbm9YFkiP0TX5seQluDymPirRURkNYWc',
+            range: 'A:M',
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            resource: userData,
+            auth: GoogleSpreadsheetsManager.authClient
+        }, function (err, response) {
+            if (err) {
+                // console.log('The API returned an error: ' + err);
+                reject(err);
+            }
+            fulfill(response);
+        });
+    });
+}
+
+function GoogleSpreadsheetsManager() { }
+
+exports.findUserWithEmail = findUserWithEmail;
+exports.createNewUserWithData = createNewUserWithData;
+exports.updateUserWithData = updateUserWithData;
