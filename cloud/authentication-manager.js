@@ -180,7 +180,7 @@ function createNewUserPerson(userParams, status) {
   });
 }
 
-function updateUserPerson(userParams, oldUser,status) {
+function updateUserPerson(userParams, oldUser, status) {
   return new Promise(function (fulfill, reject) {
 
     var newUser = oldUser;
@@ -198,7 +198,7 @@ function updateUserPerson(userParams, oldUser,status) {
     var isNewPhone = false
     var newAddress = null;
     var isNewAddress = false
-    newPerson.get('phones').query().equalTo('isMain').find().then(function (phones) {
+    newPerson.get('phones').query().equalTo('isMain',true).find().then(function (mainPhones) {
       if (mainPhones.length > 0) { //add phones
         var newPhone = mainPhones[0];
 
@@ -216,9 +216,10 @@ function updateUserPerson(userParams, oldUser,status) {
         var phonesRelation = newPerson.relation("phones");
         phonesRelation.add(newPhone);
       }
-
-      if (addresses.length > 0) {
-        newAddress = addresses[0];
+      return newPerson.get('addresses').query().equalTo('isMain',true).find()
+    }).then(function (mainAddresses) {
+      if (mainAddresses.length > 0) {
+        newAddress = mainAddresses[0];
       } else {
         var Address = Parse.Object.extend("Address");
         var newAddress = new Address();
@@ -234,16 +235,14 @@ function updateUserPerson(userParams, oldUser,status) {
       newAddress.set('isMain', userParams.person.address.isMain);
 
       return newAddress.save()
+
     }).then(function (newAddress) {
       if (isNewAddress == true) {
         var addressesRelation = newPerson.relation("addresses");
         addressesRelation.add(newAddress);
       }
       newUser.set('personPointer', newPerson);
-      return newUser.save()
-    }).then(function (addresses) {
-      newUser.set('personPointer', newPerson);
-      return newUser.save()
+      return newUser.save(null,{useMasterKey: true})
     }).then(function (newUser) {
       fulfill(newUser)
     }).catch(function (err) {
@@ -264,7 +263,7 @@ function verifyAndCreateUserCowork(users, userParams) {
       } else if (userToRegister.get('username') != userParams.email) {
         reject({ msg: "CPF already being used another email" });
       } else if (userToRegister.get('subscriptionStatus') != SubscriptionStatus.ACTIVE) {
-        updateUserPerson(userParams, userToRegister, SubscriptionStatus.TRYINGTOBUY).then(function (createdUser) {
+        updateUserPerson(userParams, userToRegister, SubscriptionStatus.TRYINGTOBUY).then(function (updatedUser) {
           fulfill(updatedUser)
         }).catch(function (err) {
           reject(err);
@@ -291,13 +290,13 @@ function verifyAndCreateVindiUser(user, res) {
     "registry_code": person.get('cpf'),
     "status": "inactive"
   };
+  var existingUserId = null
   return new Promise(function (fulfill, reject) {
     VindiManager.searchVindiUserByCPF(person.get('cpf'), res).then(function (httpResponse) {
       if (httpResponse.data["customers"].length > 0) { // user registered on vindi
-        fulfill(httpResponse)
-      } else { //user not registered on vindi
-        return person.get('addresses').query().equalTo('isMain').find();
+        existingUserId = httpResponse.data["customers"]["id"];
       }
+      return person.get('addresses').query().equalTo('isMain',true).find();
     }).then(function (mainAddresses) {
       if (mainAddresses.length > 0) {
         var address = mainAddresses[0];
@@ -311,8 +310,7 @@ function verifyAndCreateVindiUser(user, res) {
           "country": 'Brasil'
         };
       }
-
-      return person.get('phones').query().equalTo('isMain').find();
+      return person.get('phones').query().equalTo('isMain',true).find();
     }).then(function (mainPhones) {
       if (mainPhones.length > 0) { //add phones
         var phone = mainPhones[0];
@@ -324,7 +322,12 @@ function verifyAndCreateVindiUser(user, res) {
           }
         ]
       }
-      return VindiManager.createVindiUserWithData(vindiUserData)
+
+      if (existingUserId == null) {
+        return VindiManager.createVindiUserWithData(vindiUserData);
+      } else {
+        return VindiManager.updateVindiUserWithData(vindiUserData, existingUserId);
+      }
     }).then(function (httpResponse) {
       fulfill(httpResponse)
     }).catch(function (error) {
