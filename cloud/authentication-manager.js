@@ -418,10 +418,13 @@ function verifyAndCreateGooleSheetsUser(user) {
       ]
     }
     var isNewUser = false;
-    GoogleSpreadsheetsManager.findUserWithEmail(user.get('username')).then(function (users) {
-      if (users.length == 0) {
+    var googlePayload = null
+    GoogleSpreadsheetsManager.findUserWithEmail(user.get('username')).then(function (payload) {
+      if (payload == null) {
         isNewUser = true
       }
+      googlePayload = payload;
+
       return user.get('personPointer').get('addresses').query().equalTo('isMain', true).find()
 
     }).then(function (mainAddresses) {
@@ -443,8 +446,7 @@ function verifyAndCreateGooleSheetsUser(user) {
       if (isNewUser == true) {
         return GoogleSpreadsheetsManager.createNewUserWithData(newUser);
       } else {
-        //TODO: update User get user row in array and computade table colunms and rows to update
-        return GoogleSpreadsheetsManager.updateUserWithData(newUser);
+        return GoogleSpreadsheetsManager.updateUserWithData(newUser,googlePayload.range);
       }
     }).then(function (userSaved) {
       fulfill(userSaved);

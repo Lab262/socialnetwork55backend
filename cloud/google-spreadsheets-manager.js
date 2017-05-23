@@ -174,10 +174,18 @@ function findUserWithEmail(email) {
                 reject(err);
             } else {
                 var users = response.values;
-                users = users.filter(function (current) {
+
+                var filteredUsers = users.filter(function (current) {
                     return current[0] == email
                 });
-                fulfill(users);
+                var payload = null
+                if (filteredUsers.length > 0) {
+                    var index = users.indexOf(filteredUsers[0]) + 2 //not consider the header on the sheet table
+                    var rangeString = 'A' + index + ":M" + index
+                    payload = { object: filteredUsers[0], range: rangeString }
+                }
+
+                fulfill(payload);
             }
         })
     });
@@ -203,14 +211,13 @@ function createNewUserWithData(userData) {
     });
 }
 
-function updateUserWithData(userData) {         //TODO: update User get user row in array and computade table colunms and rows to update
+function updateUserWithData(userData,range) {         //TODO: update User get user row in array and computade table colunms and rows to update
     return new Promise(function (fulfill, reject) {
         var sheets = google.sheets('v4');
-        sheets.spreadsheets.values.append({
+        sheets.spreadsheets.values.update({
             spreadsheetId: '1VB4PIIW6OwWdbm9YFkiP0TX5seQluDymPirRURkNYWc',
-            range: 'A:M',
+            range: range,
             valueInputOption: 'RAW',
-            insertDataOption: 'INSERT_ROWS',
             resource: userData,
             auth: GoogleSpreadsheetsManager.authClient
         }, function (err, response) {
