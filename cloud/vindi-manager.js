@@ -36,7 +36,12 @@ function updateVindiUserWithData(userData,userId) {
     return performVindiRequest('PUT', 'customers/' + userId, userData, null);
 }
 
+function createSubscriptionWithData(subscriptionData) {
+    return performVindiRequest('POST', 'subscriptions/', subscriptionData, null);
+}
+
 exports.performVindiRequest = performVindiRequest;
 exports.searchVindiUserByCPF = searchVindiUserByCPF;
 exports.createVindiUserWithData = createVindiUserWithData;
 exports.updateVindiUserWithData = updateVindiUserWithData;
+exports.createSubscriptionWithData = createSubscriptionWithData;

@@ -2,6 +2,7 @@ var path = require('path');
 var VindiManager = require(path.join(__dirname, '/vindi-manager.js'));
 var BlingManager = require(path.join(__dirname, '/bling-manager.js'));
 var GoogleSpreadsheetsManager = require(path.join(__dirname, '/google-spreadsheets-manager.js'));
+var SendgridManager = require(path.join(__dirname, '/sendgrid-manager.js'));
 
 const SubscriptionStatus = {
   INACTIVE: 0,
@@ -99,18 +100,30 @@ Parse.Cloud.define('membershipRegistration', function (req, res) {
   } else if (emailValidator.validate(req.params.email) == false) {
     return res.error({ msg: "Invalid email" });
   }
+
+  var membershipPlanId = 14928
+  var creditCardDecriptedData = req.params.cardInfo
   var userToRegister = null;
+  var vindiUserId = null
   findUserByEmailOrCpf(req.params.email, req.params.cpf, res).then(function (users) {
     return verifyAndCreateUserCowork(users, req.params)
   }).then(function (userCowork) {
     userToRegister = userCowork
     return verifyAndCreateVindiUser(userCowork, res);
   }).then(function (vindiHttpResponse) {
+    vindiUserId = vindiHttpResponse.data.customer.id
     return verifyAndCreateBlingUser(userToRegister);
   }).then(function (blingHttpRequest) {
     return verifyAndCreateGooleSheetsUser(userToRegister);
   }).then(function (googleSheetsHttpRequest) {
-    return res.success(googleSheetsHttpRequest);
+    return createSubscriptionWithUserAndVindiIdAndPlanIdAndCardInfo(userToRegister, vindiUserId, membershipPlanId, creditCardDecriptedData)
+    //TODO: vindi tentativa de pagamento
+    //TODO: sendgrid erro de tentativa de pagamento
+    //TODO: sucesso ATUALIZA USUario para ativo
+    //TODO: sendgrid email para usuario definir senha 
+    //TODO: Gera compras com pagamento previsto e parcelas usando status e nao 12 compras diferentes
+  }).then(function (vindiSubscriptionHttpResponse) {
+    return res.success(vindiSubscriptionHttpResponse);
     //TODO: vindi tentativa de pagamento
     //TODO: sendgrid erro de tentativa de pagamento
     //TODO: sucesso ATUALIZA USUario para ativo
@@ -462,4 +475,48 @@ function verifyAndCreateGooleSheetsUser(user) {
 
 
 
+}
+
+function createSubscriptionWithUserAndVindiIdAndPlanIdAndCardInfo(user, userVindiId, planId, cardInfo, res) {
+  var person = user.get('personPointer');
+  var subscriptionData = {
+    "plan_id": planId,
+    "customer_id": userVindiId,
+    "start_at": getTodayISO8601(),
+    "payment_method_code": "credit_card",
+    "payment_profile": {
+      "holder_name": person.get('name'),
+      "registry_code": person.get('cpf'),
+      "card_expiration": cardInfo['expiration'],
+      "card_number": cardInfo['number'],
+      "card_cvv": cardInfo['cvv'],
+      "payment_method_code": 'credit_card',
+      "payment_company_code": cardInfo['payment_company_code']
+    }
+  }
+  return new Promise(function (fulfill, reject) {
+    VindiManager.createSubscriptionWithData(subscriptionData).then(function (httpResponse) {
+      fulfill(httpResponse)
+    }).catch(function (error) {
+      SendgridManager.sendMailToWithSubjectAndBody(["thiago@lab262.com","luis@lab262.com"], "Tentativa mal sucedida de compra membership", "Um possível lead tentou comprar membership mas a tentativa falhou, o usuario entrou com os seguintes dados:     "+ JSON.stringify(subscriptionData));
+      reject(error);
+      //TODO: ENVIA MENSAGEM FINANCEIRO COMERCIAL TENTATIVA DE COMPRA
+    })
+  })
+
+  function getTodayISO8601() {
+    var today = new Date();
+    var dd = today.getDate();
+    var mm = today.getMonth() + 1; //January is 0!
+    var yyyy = today.getFullYear();
+    if (dd < 10) {
+      dd = '0' + dd
+    }
+
+    if (mm < 10) {
+      mm = '0' + mm
+    }
+    var today = yyyy + "-" + mm + "-" + dd
+    return today
+  }
 }
