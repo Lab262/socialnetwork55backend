@@ -20,6 +20,15 @@ const BlingContactStatus = {  //BLING STATUS E-excluido I-inativo A-ativo S-sem 
   NOMOVEMENT: "S"
 }
 
+const BlingPedidoStatus = {  //BLING STATUS E-excluido I-inativo A-ativo S-sem movimento
+  OPENED: 0,
+  SERVICED: 1,
+  CANCELED: 2,
+  INPROGRESS: 3,
+  SALEBROKERED: 4,
+  INTYPING: 10,
+  VERIFIED: 11
+}
 
 // Parse.Cloud.define('sendUserAccessMail', function (req, res) {
 
@@ -108,6 +117,8 @@ Parse.Cloud.define('membershipRegistration', function (req, res) {
   var creditCardDecriptedData = req.params.cardInfo
   var userToRegister = null;
   var vindiUserId = null
+  var blingClientData = null
+  var membershipPlanInfo = null
   findUserByEmailOrCpf(req.params.email, req.params.cpf, res).then(function (users) {
     return verifyAndCreateUserCowork(users, req.params)
   }).then(function (userCowork) {
@@ -117,10 +128,16 @@ Parse.Cloud.define('membershipRegistration', function (req, res) {
     vindiUserId = vindiHttpResponse.data.customer.id
     return verifyAndCreateBlingUser(userToRegister);
   }).then(function (blingHttpRequest) {
+    blingClientData = blingHttpRequest
     return verifyAndCreateGooleSheetsUser(userToRegister);
   }).then(function (googleSheetsHttpRequest) {
     return createSubscriptionWithUserAndVindiIdAndPlanIdAndCardInfo(userToRegister, vindiUserId, membershipPlanId, creditCardDecriptedData)
   }).then(function (vindiSubscriptionHttpResponse) {
+    membershipPlanInfo = {
+      name: vindiSubscriptionHttpResponse.data.subscription.product_items[0].product.name,
+      price: vindiSubscriptionHttpResponse.data.subscription.product_items[0].pricing_schema.price,
+      code: vindiSubscriptionHttpResponse.data.subscription.product_items[0].product.code
+    }
     return updateUserPerson(req.params, userToRegister, SubscriptionStatus.ACTIVE);
   }).then(function (updatedUser) {
     var userInfo = {
@@ -128,56 +145,12 @@ Parse.Cloud.define('membershipRegistration', function (req, res) {
       objectId: userToRegister.id
     }
     resetUserPassword(userInfo);
-
-    var blingData = {
-      "pedido": {
-        "cliente": {
-          "nome": "Thiago Bernardes",
-          "tipo_pessoa": "F",
-          "rg": "5746663",
-          "cpf_cnpj": "04443745157",
-          "endereco": "Rua 07",
-          "numero": "334",
-          "bairro": "Setor Ferroviario",
-          "cep": "73.805-025",
-          "cidade": "Formosa",
-          "uf": "GO",
-          "email": "tmb0710@gmail.com",
-          "fone": "61999619322"
-        },
-        "itens": [
-          {
-            "item": {
-              "descricao": "membership 2",
-              "un": "Pc",
-              "qtde": "12",
-              "vlr_unit": "59.00",
-              "tipo": "P",
-              "origem": "1",
-              "codigo": "4dasdad1",
-              "class_fiscal": "01022110",
-              "obs": "novo 84"
-            }
-          }
-        ],
-        "parcelas": [
-          {
-            "parcela": {
-              "dias": "0",
-              "vlr": "59.00"
-            }
-          }
-        ]
-      }
-    }
-
-
-    // BlingManager.
-    //TODO: Gera compras com pagamento previsto e parcelas usando status e nao 12 compras diferentes
+    createBlingMembershipSellsWithData(blingClientData, membershipPlanInfo, userToRegister.id);
+    //TODO: Gera compras com pagamento previsto e parcelas usando status e nao 12 compras diferentes -> TO TEST
     return res.success(updatedUser);
   }).catch(function (error) {
     return res.error(error);
-  })
+  });
 })
 
 function findUserByEmailOrCpf(email, cpf, res) {
@@ -461,6 +434,88 @@ function verifyAndCreateBlingUser(user) {
     })
   })
 
+
+}
+
+function createBlingMembershipSellsWithData(userData, productData, clientDBId) {
+  var blingSellData = {
+    "cliente": {
+      "nome": userData.nome,
+      "tipo_pessoa": userData.tipo,
+      "cpf_cnpj": userData.cnpj,
+      "endereco": userData.endereco,
+      "numero": userData.numero,
+      "bairro": userData.bairro,
+      "cep": userData.cep,
+      "cidade": userData.cidade,
+      "uf": userData.uf,
+      "email": userData.email,
+      "fone": userData.fone
+    },
+    "itens": [
+      {
+        "item": {
+          "descricao": productData.name,
+          "un": "Pc",
+          "qtde": "1",
+          "vlr_unit": productData.price,
+          "tipo": "P",
+          "codigo": productData.code,
+          "class_fiscal": "01022110",
+          "origem": "1",
+          "obs": "client_code_" + clientDBId
+        }
+      }
+    ],
+    "parcelas": [
+      {
+        "parcela": {
+          "dias": "0",
+          "vlr": productData.price
+        }
+      }
+    ],
+    "loja": "203149110", //55lab filial
+    "numero_loja": productData.code, //vindi code
+    // "loja2teste": "203135828",
+    "vendedor": "Lab262" //
+  }
+
+  createBlingMembershipSellsWithDataIteration(0, blingSellData)
+
+}
+
+function createBlingMembershipSellsWithDataIteration(iteration, data) {
+  var dataWithStatementDateUpdated = data;
+  dataWithStatementDateUpdated.parcelas[0].parcela.dias = "" + iteration * 30;
+  dataWithStatementDateUpdated.itens[0].item.obs = dataWithStatementDateUpdated.itens[0].item.obs + "_fidelidade_" + iteration;
+
+  if (iteration < 3) {
+    var gerarnfe = "false"
+    if (iteration == 0) { //just the current payment has nfe
+      gerarnfe = "true"
+    }
+    BlingManager.createBlingPedidoWithData(dataWithStatementDateUpdated, gerarnfe).then(function (httpResponse) {
+      // console.log(iteration);
+      var iterationStep = iteration + 1;
+      if (iteration == 0) {
+        //update to serviced and after create new
+        BlingManager.updateBlingPedidoSituacao(BlingPedidoStatus.SERVICED, httpResponse.retorno.pedidos[0].pedido.numero).then(function (blingUpdateHttpsRequest) {
+          createBlingMembershipSellsWithDataIteration(iterationStep, dataWithStatementDateUpdated);
+        }).catch(function (err) {
+          console.log(error.length);
+          console.log(error[0].erro);
+        });
+      } else {
+        createBlingMembershipSellsWithDataIteration(iterationStep, dataWithStatementDateUpdated);
+      }
+    }).catch(function (error) {
+      console.log(error.length);
+      console.log(error[0].erro);
+    })
+  } else {
+    console.log("success bling sells created");
+  }
 
 }
 
