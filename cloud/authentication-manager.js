@@ -21,32 +21,35 @@ const BlingContactStatus = {  //BLING STATUS E-excluido I-inativo A-ativo S-sem 
 }
 
 
-Parse.Cloud.define('sendUserAccessMail', function (req, res) {
+// Parse.Cloud.define('sendUserAccessMail', function (req, res) {
 
-  var users = req.params.users
+//   var users = req.params.users
 
-  for (index in users) {
-    resetUserPassword(users[index], res)
-  }
+//   for (index in users) {
+//     resetUserPassword(users[index], res)
+//   }
 
-});
+// });
 
-function resetUserPassword(userInfo, res) {
-  var query = new Parse.Query(Parse.User);
-  query.equalTo("username", userInfo.email);
-  query.equalTo("objectId", userInfo.objectId);
-  query.find().then(function (results) {
-    if (results.length > 0) {
-      var user = results[0];
-      return Parse.User.requestPasswordReset(user.getUsername());
-    } else {
-      return res.error('User not found');
-    }
-  }).then(function (error, result) {
-    return res.success(result);
-  }).catch(function (error) {
-    return res.error('User not found');
+function resetUserPassword(userInfo) {
+  return new Promise(function (fulfill, reject) {
+    var query = new Parse.Query(Parse.User);
+    query.equalTo("username", userInfo.email);
+    query.equalTo("objectId", userInfo.objectId);
+    query.find().then(function (results) {
+      if (results.length > 0) {
+        var user = results[0];
+        return Parse.User.requestPasswordReset(user.getUsername());
+      } else {
+        return reject('User not found');
+      }
+    }).then(function (error, result) {
+      return fulfill(result);
+    }).catch(function (error) {
+      return reject('User not found');
+    });
   });
+
 }
 
 Parse.Cloud.define('membershipLogin', function (req, res) {
@@ -117,18 +120,61 @@ Parse.Cloud.define('membershipRegistration', function (req, res) {
     return verifyAndCreateGooleSheetsUser(userToRegister);
   }).then(function (googleSheetsHttpRequest) {
     return createSubscriptionWithUserAndVindiIdAndPlanIdAndCardInfo(userToRegister, vindiUserId, membershipPlanId, creditCardDecriptedData)
-    //TODO: vindi tentativa de pagamento
-    //TODO: sendgrid erro de tentativa de pagamento
-    //TODO: sucesso ATUALIZA USUario para ativo
-    //TODO: sendgrid email para usuario definir senha 
-    //TODO: Gera compras com pagamento previsto e parcelas usando status e nao 12 compras diferentes
   }).then(function (vindiSubscriptionHttpResponse) {
-    return res.success(vindiSubscriptionHttpResponse);
-    //TODO: vindi tentativa de pagamento
-    //TODO: sendgrid erro de tentativa de pagamento
-    //TODO: sucesso ATUALIZA USUario para ativo
-    //TODO: sendgrid email para usuario definir senha 
+    return updateUserPerson(req.params, userToRegister, SubscriptionStatus.ACTIVE);
+  }).then(function (updatedUser) {
+    var userInfo = {
+      email: userToRegister.get('email'),
+      objectId: userToRegister.id
+    }
+    resetUserPassword(userInfo);
+
+    var blingData = {
+      "pedido": {
+        "cliente": {
+          "nome": "Thiago Bernardes",
+          "tipo_pessoa": "F",
+          "rg": "5746663",
+          "cpf_cnpj": "04443745157",
+          "endereco": "Rua 07",
+          "numero": "334",
+          "bairro": "Setor Ferroviario",
+          "cep": "73.805-025",
+          "cidade": "Formosa",
+          "uf": "GO",
+          "email": "tmb0710@gmail.com",
+          "fone": "61999619322"
+        },
+        "itens": [
+          {
+            "item": {
+              "descricao": "membership 2",
+              "un": "Pc",
+              "qtde": "12",
+              "vlr_unit": "59.00",
+              "tipo": "P",
+              "origem": "1",
+              "codigo": "4dasdad1",
+              "class_fiscal": "01022110",
+              "obs": "novo 84"
+            }
+          }
+        ],
+        "parcelas": [
+          {
+            "parcela": {
+              "dias": "0",
+              "vlr": "59.00"
+            }
+          }
+        ]
+      }
+    }
+
+
+    // BlingManager.
     //TODO: Gera compras com pagamento previsto e parcelas usando status e nao 12 compras diferentes
+    return res.success(updatedUser);
   }).catch(function (error) {
     return res.error(error);
   })
@@ -498,9 +544,8 @@ function createSubscriptionWithUserAndVindiIdAndPlanIdAndCardInfo(user, userVind
     VindiManager.createSubscriptionWithData(subscriptionData).then(function (httpResponse) {
       fulfill(httpResponse)
     }).catch(function (error) {
-      SendgridManager.sendMailToWithSubjectAndBody(["thiago@lab262.com","luis@lab262.com"], "Tentativa mal sucedida de compra membership", "Um possível lead tentou comprar membership mas a tentativa falhou, o usuario entrou com os seguintes dados:     "+ JSON.stringify(subscriptionData));
+      SendgridManager.sendMailToWithSubjectAndBody(["thiago@lab262.com", "luis@lab262.com"], "Tentativa mal sucedida de compra membership", "Um possível lead tentou comprar membership mas a tentativa falhou, o usuario entrou com os seguintes dados:     " + JSON.stringify(subscriptionData));
       reject(error);
-      //TODO: ENVIA MENSAGEM FINANCEIRO COMERCIAL TENTATIVA DE COMPRA
     })
   })
 

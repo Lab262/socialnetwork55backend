@@ -73,72 +73,36 @@ function createBlingUserWithData(userData) {
 //TODO: UPDATE TO ACTIVE
 //TODO: CREATE AS 55LAB STORE SEGMENTATION
 //TODO: CREATE AS LAB262 VENDEDOR
-Parse.Cloud.define('blingnfe', function (req, res) { //TO CREATE NEW BLING NOTE NEED TO INCREMENT THE OBSERVACOES FIELD
-  var NFEData = req.params.requestBody.pedido
-  var js2xmlparser = require("js2xmlparser");
-  var parseXMLString = require('xml2js').parseString;
-  var objectToXml = js2xmlparser.parse("pedido", NFEData);
-  var xmlNFEData = { "xml": objectToXml };
-  // return new Promise(function (fulfill, reject) {
-    performBlingRequest('POST', 'nfce/json/', xmlNFEData, null).then(function (httpResponse) {
-        var result = httpResponse.data;
-          if (result["retorno"]["erros"] != null) {
-            return res.error(result["retorno"]["erros"]);
-          } else {
-            return res.success(result);
-          }
+function createBlingPedidoWithData(NFEData) {
+  return new Promise(function (fulfill, reject) {
+    var js2xmlparser = require("js2xmlparser");
+    var parseXMLString = require('xml2js').parseString;
+    var objectToXml = js2xmlparser.parse("pedido", NFEData);
+    var xmlNFEData = { "xml": objectToXml };
+    // return new Promise(function (fulfill, reject) {
+    performBlingRequest('POST', 'pedido/json/', xmlNFEData, "gerarnfe=true").then(function (httpResponse) {
+      var result = httpResponse.data;
+      if (result["retorno"]["erros"] != null) {
+        return reject(result["retorno"]["erros"]);
+      } else {
+        return fulfill(result);
+      }
     }).catch(function (error) {
-      return res.error(error);
+      return reject(error);
     });
+  });
   // });
-});
-
-//TODO: TO CREATE NEW BLING NOTE NEED TO INCREMENT THE OBSERVACOES FIELD
-//TODO: CREATE EM ABERTO
-//TODO: UPDATE TO ACTIVE
-//TODO: CREATE AS 55LAB STORE SEGMENTATION
-//TODO: CREATE AS LAB262 VENDEDOR
-Parse.Cloud.define('blingNotaFiscal', function (req, res) { 
-  var NFEData = req.params.requestBody.pedido;
-  var js2xmlparser = require("js2xmlparser");
-  var parseXMLString = require('xml2js').parseString;
-  var objectToXml = js2xmlparser.parse("pedido", NFEData);
-  var xmlNFEData = { "xml": objectToXml};
-  // return new Promise(function (fulfill, reject) {
-    performBlingRequest('POST', 'nfce/json/', xmlNFEData, null).then(function (httpResponse) {
-        var result = httpResponse.data;
-          if (result["retorno"]["erros"] != null) {
-            return res.error(result["retorno"]["erros"]);
-          } else {
-            return res.success(result);
-          }
-    }).catch(function (error) {
-      return res.error(error);
-    });
-  // });
-});
+}
 
 Parse.Cloud.define('blingPedido', function (req, res) { //TODO: TO CREATE NEW BLING PEDIDO NEED TO INCREMENT THE OBSERVACOES FIELD
- 
-  var NFEData = req.params.requestBody.pedido;
-  var js2xmlparser = require("js2xmlparser");
-  var parseXMLString = require('xml2js').parseString;
-  var objectToXml = js2xmlparser.parse("pedido", NFEData);
-  var xmlNFEData = { "xml": objectToXml};
-  // return new Promise(function (fulfill, reject) {
-    performBlingRequest('POST', 'pedido/json/', xmlNFEData, "gerarnfe=true").then(function (httpResponse) {
-        var result = httpResponse.data;
-          if (result["retorno"]["erros"] != null) {
-            return res.error(result["retorno"]["erros"]);
-          } else {
-            return res.success(result);
-          }
-    }).catch(function (error) {
-      return res.error(error);
-    });
-  // });
+  createBlingPedidoWithData(req.params.requestBody.pedido).then(function (result){
+    res.success(result);
+  }).catch(function(err){
+    res.error(err);
+  })
 });
 
 exports.performBlingRequest = performBlingRequest;
 exports.searchBlingUserByCPF = searchBlingUserByCPF;
 exports.createBlingUserWithData = createBlingUserWithData;
+exports.createBlingPedidoWithData = createBlingPedidoWithData;
