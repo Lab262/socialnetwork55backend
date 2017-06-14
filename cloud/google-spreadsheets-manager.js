@@ -52,10 +52,16 @@ function authorize(credentials) {
     var oauth2Client = new auth.OAuth2(clientId, clientSecret, redirectUrl);
 
     // Check if we have previously stored a token.
+    console.log('AUTH FILE PATH');
+    console.log(TOKEN_PATH);
     fs.readFile(TOKEN_PATH, function (err, token) {
         if (err) {
+            console.log('AUTH FILE PATH ERROR');
+            console.log(err);
             getNewToken(oauth2Client);
         } else {
+            console.log('AUTH FILE PATH SUCCESS');
+            console.log(token);
             oauth2Client.credentials = JSON.parse(token);
             GoogleSpreadsheetsManager.authClient = oauth2Client
         }
