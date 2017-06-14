@@ -13,7 +13,7 @@ GoogleSpreadsheetsManager.authClient = null;
 
 
 //CHECK AUTHORIZATION
-fs.readFile(TOKEN_PATH), function processClientSecrets(err, content) {
+fs.readFile(TOKEN_PATH, function processClientSecrets(err, content) {
     if (err) {
         console.log('Error loading client secret file: ' + err);
         return;
