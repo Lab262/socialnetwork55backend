@@ -52,16 +52,16 @@ function authorize(credentials) {
     var oauth2Client = new auth.OAuth2(clientId, clientSecret, redirectUrl);
 
     // Check if we have previously stored a token.
-    console.log('AUTH FILE PATH');
-    console.log(TOKEN_PATH);
+    // console.log('AUTH FILE PATH');
+    // console.log(TOKEN_PATH);
     fs.readFile(TOKEN_PATH, function (err, token) {
         if (err) {
-            console.log('AUTH FILE PATH ERROR');
-            console.log(err);
+            // console.log('AUTH FILE PATH ERROR');
+            // console.log(err);
             getNewToken(oauth2Client);
         } else {
-            console.log('AUTH FILE PATH SUCCESS');
-            console.log(token);
+            // console.log('AUTH FILE PATH SUCCESS');
+            // console.log(token);
             oauth2Client.credentials = JSON.parse(token);
             GoogleSpreadsheetsManager.authClient = oauth2Client
         }
@@ -180,10 +180,13 @@ function findUserWithEmail(email) {
                 reject(err);
             } else {
                 var users = response.values;
+                var filteredUsers = [];
+                if (users != undefined) {
+                    filteredUsers = users.filter(function (current) {
+                        return current[0] == email
+                    });
+                }
 
-                var filteredUsers = users.filter(function (current) {
-                    return current[0] == email
-                });
                 var payload = null
                 if (filteredUsers.length > 0) {
                     var index = users.indexOf(filteredUsers[0]) + 2 //not consider the header on the sheet table
@@ -217,7 +220,7 @@ function createNewUserWithData(userData) {
     });
 }
 
-function updateUserWithData(userData,range) {         //TODO: update User get user row in array and computade table colunms and rows to update
+function updateUserWithData(userData, range) {         //TODO: update User get user row in array and computade table colunms and rows to update
     return new Promise(function (fulfill, reject) {
         var sheets = google.sheets('v4');
         sheets.spreadsheets.values.update({
