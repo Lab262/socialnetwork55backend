@@ -7,14 +7,13 @@ var path = require('path');
 // If modifying these scopes, delete your previously saved credentials
 // at ~/.credentials/sheets.googleapis.com-nodejs-quickstart.json
 var SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'];
-var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
-    process.env.USERPROFILE) + '/.credentials/';
-var TOKEN_PATH = TOKEN_DIR + 'sheets.googleapis.com-nodejs-quickstart.json';
+var TOKEN_DIR = path.join(__dirname, '/.credentials');
+var TOKEN_PATH = path.join(__dirname, '/.credentials/client_secret.json');
 GoogleSpreadsheetsManager.authClient = null;
 
 
 //CHECK AUTHORIZATION
-fs.readFile(path.join(__dirname, '/client_secret.json'), function processClientSecrets(err, content) {
+fs.readFile(TOKEN_PATH), function processClientSecrets(err, content) {
     if (err) {
         console.log('Error loading client secret file: ' + err);
         return;
